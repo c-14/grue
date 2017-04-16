@@ -2,41 +2,36 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/smtp"
 	"os"
 	"os/user"
 )
 
 type accountConfig struct {
-	name string
-	url  string
+	URI        string
+	NameFormat *string `json:",omitempty"`
+	UserAgent  *string `json:",omitempty"`
 }
 
 type config struct {
-	Recipient  *string
-	From       string
-	NameFormat string
-	UserAgent  string
-	SmtpAuth   smtp.Auth
-	SmtpServer *string
-	LogLevel   *string
-	Accounts   map[string]accountConfig
+	Path        string `json:"-"`
+	Recipient   *string
+	FromAddress string
+	NameFormat  string
+	UserAgent   string
+	SmtpAuth    smtp.Auth
+	SmtpServer  *string
+	LogLevel    *string
+	Accounts    map[string]accountConfig
 }
 
-func (conf *config) String() (str string) {
-	var recipient, smtpserver, loglevel = "<nil>", "<nil>", "<nil>"
-	str = "&{Recipient: "
-	if conf.Recipient != nil {
-		recipient = *conf.Recipient
+func (conf *config) String() string {
+	b, err := json.Marshal(conf)
+	if err != nil {
+		log.Panicln("Can't Marshal config")
 	}
-	if conf.SmtpServer != nil {
-		smtpserver = *conf.SmtpServer
-	}
-	if conf.LogLevel != nil {
-		loglevel = *conf.LogLevel
-	}
-	return fmt.Sprintf("&{Recipient: %v, From: %v, NameFormat: %v, SmtpAuth: %v, SmtpServer: %v, LogLevel: %v, Accounts: %v}", recipient, conf.From, conf.NameFormat, conf.SmtpAuth, smtpserver, loglevel, conf.Accounts)
+	return string(b)
 }
 
 func defaultFrom() (string, error) {
@@ -69,7 +64,7 @@ func makeDefConfig() (*config, error) {
 	if err != nil {
 		return nil, err
 	}
-	var conf = &config{From: from, NameFormat: "{name}: {title}"}
+	var conf = &config{FromAddress: from, NameFormat: "{feed.name}: {feed-title}", UserAgent: "grue/{version}"}
 	return conf, nil
 }
 
@@ -78,6 +73,7 @@ func writeDefConfig(path string) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
+	conf.Path = path
 	return conf, conf.write(path)
 }
 
@@ -95,5 +91,15 @@ func readConfig(path string) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
+	conf.Path = path
 	return conf, nil
+}
+
+func (conf *config) addAccount(name, uri string) error {
+	if conf.Accounts == nil {
+		conf.Accounts = make(map[string]accountConfig)
+	}
+	conf.Accounts[name] = accountConfig{URI: uri}
+	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
+	return conf.write(conf.Path)
 }
