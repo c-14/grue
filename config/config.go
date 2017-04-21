@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/json"
@@ -8,13 +8,13 @@ import (
 	"os/user"
 )
 
-type accountConfig struct {
+type AccountConfig struct {
 	URI        string
 	NameFormat *string `json:",omitempty"`
 	UserAgent  *string `json:",omitempty"`
 }
 
-type config struct {
+type GrueConfig struct {
 	Path        string `json:"-"`
 	Recipient   *string
 	FromAddress string
@@ -23,10 +23,10 @@ type config struct {
 	SmtpAuth    smtp.Auth
 	SmtpServer  *string
 	LogLevel    *string
-	Accounts    map[string]accountConfig
+	Accounts    map[string]AccountConfig
 }
 
-func (conf *config) String() string {
+func (conf *GrueConfig) String() string {
 	b, err := json.Marshal(conf)
 	if err != nil {
 		log.Panicln("Can't Marshal config")
@@ -47,7 +47,7 @@ func defaultFrom() (string, error) {
 	return from, nil
 }
 
-func (conf *config) write(path string) error {
+func (conf *GrueConfig) write(path string) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -59,16 +59,16 @@ func (conf *config) write(path string) error {
 	return err
 }
 
-func makeDefConfig() (*config, error) {
+func makeDefConfig() (*GrueConfig, error) {
 	from, err := defaultFrom()
 	if err != nil {
 		return nil, err
 	}
-	var conf = &config{FromAddress: from, NameFormat: "{feed.name}: {feed-title}", UserAgent: "grue/{version}"}
+	var conf = &GrueConfig{FromAddress: from, NameFormat: "{feed.name}: {feed-title}", UserAgent: "grue/{version}"}
 	return conf, nil
 }
 
-func writeDefConfig(path string) (*config, error) {
+func writeDefConfig(path string) (*GrueConfig, error) {
 	conf, err := makeDefConfig()
 	if err != nil {
 		return nil, err
@@ -77,8 +77,8 @@ func writeDefConfig(path string) (*config, error) {
 	return conf, conf.write(path)
 }
 
-func readConfig(path string) (*config, error) {
-	var conf *config = new(config)
+func ReadConfig(path string) (*GrueConfig, error) {
+	var conf *GrueConfig = new(GrueConfig)
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return writeDefConfig(path)
@@ -95,11 +95,11 @@ func readConfig(path string) (*config, error) {
 	return conf, nil
 }
 
-func (conf *config) addAccount(name, uri string) error {
+func (conf *GrueConfig) AddAccount(name, uri string) error {
 	if conf.Accounts == nil {
-		conf.Accounts = make(map[string]accountConfig)
+		conf.Accounts = make(map[string]AccountConfig)
 	}
-	conf.Accounts[name] = accountConfig{URI: uri}
+	conf.Accounts[name] = AccountConfig{URI: uri}
 	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
 	return conf.write(conf.Path)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"c-14/grue/config"
 	"errors"
 	"fmt"
 	"log"
@@ -11,16 +12,16 @@ const version = "0.1-alpha"
 const cfgPath = "grue.cfg"
 
 func usage() string {
-	return "usage: grue {add} ..."
+	return "usage: grue {add|fetch|import} ..."
 }
 
-func add(args []string, conf *config) error {
+func add(args []string, conf *config.GrueConfig) error {
 	if len(args) != 2 {
 		return errors.New("usage: grue add <name> <url>")
 	}
 	var name string = args[0]
 	var uri string = args[1]
-	return conf.addAccount(name, uri)
+	return conf.AddAccount(name, uri)
 }
 
 func main() {
@@ -28,15 +29,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, usage())
 		os.Exit(EX_USAGE)
 	}
-	conf, err := readConfig(cfgPath)
+	conf, err := config.ReadConfig(cfgPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	switch cmd := os.Args[1]; cmd {
 	case "add":
 		err = add(os.Args[2:], conf)
+	case "fetch":
+		err = fetchFeeds(conf)
 	case "import":
-		err = importCfg(cfgPath, os.Args[2:])
+		err = config.ImportCfg(cfgPath, os.Args[2:])
 	default:
 		fmt.Fprintln(os.Stderr, usage())
 		os.Exit(EX_USAGE)

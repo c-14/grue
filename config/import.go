@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"bufio"
@@ -14,10 +14,10 @@ func hasPrefix(s, prefix string) bool {
 }
 
 func getValue(s string) string {
-	return strings.TrimSpace(strings.Split(s, "=")[1])
+	return strings.TrimSpace(strings.SplitN(s, "=", 2)[1])
 }
 
-func importDefault(text string) (*config, error) {
+func importDefault(text string) (*GrueConfig, error) {
 	conf, err := makeDefConfig()
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func splitSections(data []byte, atEOF bool) (advance int, token []byte, err erro
 	}
 }
 
-func importCfg(path string, args []string) error {
+func ImportCfg(path string, args []string) error {
 	if len(args) != 1 {
 		return errors.New("usage: grue import <config>")
 	}
@@ -76,7 +76,7 @@ func importCfg(path string, args []string) error {
 
 	conf, err := importDefault(cfgData.Text())
 	conf.Path = path
-	conf.Accounts = make(map[string]accountConfig)
+	conf.Accounts = make(map[string]AccountConfig)
 
 	for cfgData.Scan() {
 		var name, uri string
@@ -88,7 +88,7 @@ func importCfg(path string, args []string) error {
 		} else {
 			panic("Malformated feed section")
 		}
-		conf.Accounts[name] = accountConfig{URI: uri}
+		conf.Accounts[name] = AccountConfig{URI: uri}
 	}
 	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
 	return conf.write(conf.Path)
