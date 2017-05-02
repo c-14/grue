@@ -9,9 +9,9 @@ import (
 )
 
 type AccountConfig struct {
-	URI        string
-	NameFormat *string `json:",omitempty"`
-	UserAgent  *string `json:",omitempty"`
+	URI			string
+	NameFormat	*string		`json:",omitempty"`
+	UserAgent	*string		`json:",omitempty"`
 }
 
 type GrueConfig struct {

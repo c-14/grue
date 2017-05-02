@@ -3,35 +3,78 @@ package main
 import (
 	"c-14/grue/config"
 	"fmt"
-	rss "github.com/jteeuwen/go-pkg-rss"
+	"github.com/mmcdole/gofeed"
+	"math"
+	"time"
 )
 
-func chanHandler(feed *rss.Feed, newchannels []*rss.Channel) {
-	fmt.Printf("%d new channel(s) in %s\n", len(newchannels), feed.Url)
+type RSSFeed struct {
+	config      config.AccountConfig
+	LastFetched int64               `json:",omitempty"`
+	LastQueried int64               `json:",omitempty"`
+	NextQuery   int64               `json:",omitempty"`
+	Tries       int                 `json:",omitempty"`
+	GUIDList    map[string]struct{} `json:",omitempty"`
 }
 
-func itemHandler(feed *rss.Feed, ch *rss.Channel, newitems []*rss.Item) {
-	fmt.Printf("%d new item(s) in %s\n", len(newitems), feed.Url)
-}
-
-func fetchFeed(account config.AccountConfig) error {
-	feed := rss.New(5, true, chanHandler, itemHandler)
-	if account.UserAgent != nil {
-		feed.SetUserAgent(*account.UserAgent)
+func fetchFeed(fp *gofeed.Parser, account *RSSFeed) {
+	// if account.UserAgent != nil {
+	// 	feed.SetUserAgent(*account.UserAgent)
+	// }
+	now := time.Now()
+	if account.NextQuery > now.Unix() {
+		return
 	}
-	err := feed.Fetch(account.URI, nil)
+	feed, err := fp.ParseURL(account.config.URI)
+	account.LastQueried = now.Unix()
 	if err != nil {
-		return err
+		if account.Tries > 0 {
+			account.NextQuery = now.Add(time.Duration(math.Exp2(float64(account.Tries+4))) * time.Minute).Unix()
+		}
+		account.Tries++
+		fmt.Printf("Caught error when parsing %s: %s\n", account.config.URI, err)
+		return
 	}
-	return nil
+	account.NextQuery = 0
+	account.Tries = 0
+	guids := account.GUIDList
+	// TODO: make configurable
+	if len(guids) > 100 {
+		account.GUIDList = make(map[string]struct{})
+	}
+	for _, item := range feed.Items {
+		if item.UpdatedParsed != nil || item.PublishedParsed != nil {
+			if item.PublishedParsed != nil && item.PublishedParsed.Unix() > account.LastFetched {
+				// fmt.Printf("New item: %v (%v)\n", item.Title, item.Link)
+			} else if item.UpdatedParsed != nil && item.UpdatedParsed.Unix() > account.LastFetched {
+				// fmt.Printf("Updated item: %v (%v)\n", item.Title, item.Link)
+			}
+		} else {
+			_, exists := guids[item.GUID]
+			if !exists {
+				// fmt.Printf("New item: %v (%v)\n", item.Title, item.Link)
+			}
+			account.GUIDList[item.GUID] = struct{}{}
+		}
+	}
+	account.LastFetched = account.LastQueried
+	return
 }
 
 func fetchFeeds(conf *config.GrueConfig) error {
-	for name, account := range conf.Accounts {
-		err := fetchFeed(account)
-		if err != nil {
-			return fmt.Errorf("%s (%s): %s\n", name, account.URI, err)
-		}
+	hist, err := ReadHistory()
+	if err != nil {
+		return err
 	}
-	return nil
+	fp := gofeed.NewParser()
+	for name, accountConfig := range conf.Accounts {
+		account, exist := hist.Feeds[name]
+		account.config = accountConfig
+		if !exist {
+			account.GUIDList = make(map[string]struct{})
+		}
+		fetchFeed(fp, &account)
+		hist.Feeds[name] = account
+	}
+	return hist.Write()
 }
