@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/smtp"
+	"path"
 	"os"
 	"os/user"
 )
@@ -15,7 +16,7 @@ type AccountConfig struct {
 }
 
 type GrueConfig struct {
-	Path        string `json:"-"`
+	path        string
 	Recipient   *string
 	FromAddress string
 	NameFormat  string
@@ -73,12 +74,25 @@ func writeDefConfig(path string) (*GrueConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf.Path = path
+	conf.path = path
 	return conf, conf.write(path)
 }
 
-func ReadConfig(path string) (*GrueConfig, error) {
+func getConfigPath() string {
+	cfgPath := os.Getenv("XDG_CONFIG_HOME")
+	if cfgPath == "" {
+		home := os.Getenv("HOME")
+		if home == "" {
+			panic("Can't find path to data directory")
+		}
+		return path.Join(os.Getenv("HOME"), ".config", "grue.cfg")
+	}
+	return path.Join(cfgPath, "grue.cfg")
+}
+
+func ReadConfig() (*GrueConfig, error) {
 	var conf *GrueConfig = new(GrueConfig)
+	var path = getConfigPath()
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return writeDefConfig(path)
@@ -91,7 +105,7 @@ func ReadConfig(path string) (*GrueConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf.Path = path
+	conf.path = path
 	return conf, nil
 }
 
@@ -101,5 +115,5 @@ func (conf *GrueConfig) AddAccount(name, uri string) error {
 	}
 	conf.Accounts[name] = AccountConfig{URI: uri}
 	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
-	return conf.write(conf.Path)
+	return conf.write(conf.path)
 }

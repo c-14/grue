@@ -60,7 +60,7 @@ func splitSections(data []byte, atEOF bool) (advance int, token []byte, err erro
 	}
 }
 
-func ImportCfg(path string, args []string) error {
+func ImportCfg(args []string) error {
 	if len(args) != 1 {
 		return errors.New("usage: grue import <config>")
 	}
@@ -75,7 +75,7 @@ func ImportCfg(path string, args []string) error {
 	cfgData.Scan()
 
 	conf, err := importDefault(cfgData.Text())
-	conf.Path = path
+	conf.path = getConfigPath()
 	conf.Accounts = make(map[string]AccountConfig)
 
 	for cfgData.Scan() {
@@ -91,5 +91,5 @@ func ImportCfg(path string, args []string) error {
 		conf.Accounts[name] = AccountConfig{URI: uri}
 	}
 	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
-	return conf.write(conf.Path)
+	return conf.write(conf.path)
 }

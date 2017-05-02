@@ -9,7 +9,6 @@ import (
 )
 
 const version = "0.1-alpha"
-const cfgPath = "grue.cfg"
 
 func usage() string {
 	return "usage: grue {add|fetch|import} ..."
@@ -29,7 +28,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, usage())
 		os.Exit(EX_USAGE)
 	}
-	conf, err := config.ReadConfig(cfgPath)
+	conf, err := config.ReadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +38,7 @@ func main() {
 	case "fetch":
 		err = fetchFeeds(conf)
 	case "import":
-		err = config.ImportCfg(cfgPath, os.Args[2:])
+		err = config.ImportCfg(os.Args[2:])
 	default:
 		fmt.Fprintln(os.Stderr, usage())
 		os.Exit(EX_USAGE)
