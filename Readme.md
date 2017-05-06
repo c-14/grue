@@ -16,10 +16,16 @@ Current Status:
 ## Usage
 
 * Import rss2email Config:
-	grue import rss2email.cfg
+```
+grue import rss2email.cfg
+```
 
 * Add new Feed to Config:
-	grue add <name> <url>
+```
+grue add <name> <url>
+```
 
 * Fetch Feeds as cron job:
-	*/5 * * * *		grue fetch
+```
+*/5 * * * *		grue fetch
+```
