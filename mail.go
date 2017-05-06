@@ -1,7 +1,7 @@
 package main
 
 import (
-	"c-14/grue/config"
+	"github.com/c-14/grue/config"
 	"fmt"
 	"github.com/jaytaylor/html2text"
 	"github.com/mmcdole/gofeed"

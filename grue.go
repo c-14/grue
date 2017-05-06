@@ -1,7 +1,7 @@
 package main
 
 import (
-	"c-14/grue/config"
+	"github.com/c-14/grue/config"
 	"errors"
 	"fmt"
 	"log"
