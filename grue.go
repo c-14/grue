@@ -36,7 +36,18 @@ func main() {
 	case "add":
 		err = add(os.Args[2:], conf)
 	case "fetch":
-		err = fetchFeeds(conf)
+		var hasError bool = false
+		ret := make(chan error)
+		go fetchFeeds(ret, conf)
+		for r := range ret {
+			if r != nil {
+				log.Println(r)
+				hasError = true
+			}
+		}
+		if hasError {
+			os.Exit(EX_SOFTWARE)
+		}
 	case "import":
 		err = config.ImportCfg(os.Args[2:])
 	default:

@@ -4,6 +4,7 @@ import (
 	"c-14/grue/config"
 	"fmt"
 	"github.com/mmcdole/gofeed"
+	"gopkg.in/gomail.v2"
 	"math"
 	"time"
 )
@@ -17,7 +18,25 @@ type RSSFeed struct {
 	GUIDList    map[string]struct{} `json:",omitempty"`
 }
 
-func fetchFeed(fp *gofeed.Parser, account *RSSFeed) {
+func hasNewerDate(item *gofeed.Item, lastFetched int64) (bool, time.Time) {
+	if item.PublishedParsed != nil && item.PublishedParsed.Unix() > lastFetched {
+		return true, *item.PublishedParsed
+	} else if item.UpdatedParsed != nil && item.UpdatedParsed.Unix() > lastFetched {
+		return true, *item.UpdatedParsed
+	} else if date, exists := item.Extensions["dc"]["date"]; exists {
+		dateParsed, err := time.Parse(time.RFC3339, date[0].Value)
+		if err != nil {
+			fmt.Printf("Can't parse (%v) as dc:date for (%v)\n", date, item.Link)
+			return false, time.Now()
+		}
+		if dateParsed.Unix() > lastFetched {
+			return true, dateParsed
+		}
+	}
+	return false, time.Now()
+}
+
+func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, feedName string, account *RSSFeed, config *config.GrueConfig) {
 	// if account.UserAgent != nil {
 	// 	feed.SetUserAgent(*account.UserAgent)
 	// }
@@ -38,21 +57,23 @@ func fetchFeed(fp *gofeed.Parser, account *RSSFeed) {
 	account.NextQuery = 0
 	account.Tries = 0
 	guids := account.GUIDList
-	// TODO: make configurable
-	if len(guids) > 100 {
+	if float64(len(guids)) > 1.2*float64(len(feed.Items)) {
 		account.GUIDList = make(map[string]struct{})
 	}
 	for _, item := range feed.Items {
-		if item.UpdatedParsed != nil || item.PublishedParsed != nil {
-			if item.PublishedParsed != nil && item.PublishedParsed.Unix() > account.LastFetched {
-				// fmt.Printf("New item: %v (%v)\n", item.Title, item.Link)
-			} else if item.UpdatedParsed != nil && item.UpdatedParsed.Unix() > account.LastFetched {
-				// fmt.Printf("Updated item: %v (%v)\n", item.Title, item.Link)
-			}
+		// fmt.Printf("Item: %v (%v)\n\t %v: %v %v\n", item.Title, item.Link, item.GUID, item.Updated, item.Published)
+		// b, _ := json.MarshalIndent(item, "", "  ")
+		// fmt.Printf("Item: %v\n", string(b))
+		if newer, date := hasNewerDate(item, account.LastFetched); newer {
+			// fmt.Printf("New item [%v]: %v (%v)\n", date, item.Title, item.Link)
+			e := createEmail(feedName, feed.Title, item, date, account.config, config)
+			e.Send(ch)
 		} else {
 			_, exists := guids[item.GUID]
 			if !exists {
-				// fmt.Printf("New item: %v (%v)\n", item.Title, item.Link)
+				// fmt.Printf("New uid: %v (%v)\n", item.Title, item.Link)
+				e := createEmail(feedName, feed.Title, item, date, account.config, config)
+				e.Send(ch)
 			}
 			account.GUIDList[item.GUID] = struct{}{}
 		}
@@ -61,11 +82,15 @@ func fetchFeed(fp *gofeed.Parser, account *RSSFeed) {
 	return
 }
 
-func fetchFeeds(conf *config.GrueConfig) error {
+func fetchFeeds(ret chan error, conf *config.GrueConfig) {
 	hist, err := ReadHistory()
 	if err != nil {
-		return err
+		ret <- err
+		close(ret)
+		return
 	}
+	ch := make(chan *gomail.Message, 5)
+	go startDialing(ch, ret, conf)
 	fp := gofeed.NewParser()
 	for name, accountConfig := range conf.Accounts {
 		account, exist := hist.Feeds[name]
@@ -73,8 +98,10 @@ func fetchFeeds(conf *config.GrueConfig) error {
 		if !exist {
 			account.GUIDList = make(map[string]struct{})
 		}
-		fetchFeed(fp, &account)
+		fetchFeed(fp, ch, name, &account, conf)
 		hist.Feeds[name] = account
 	}
-	return hist.Write()
+	close(ch)
+	ret <- hist.Write()
+	close(ret)
 }
