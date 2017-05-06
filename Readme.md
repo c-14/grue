@@ -1,5 +1,4 @@
-grue
-====
+# grue
 
 Go RSS Uranium Email
 
@@ -9,3 +8,18 @@ Current Status:
 
 	Release - Alpha
 	Bugs - Probably
+
+## Download
+
+	go get github.com/c-14/grue
+
+## Usage
+
+* Import rss2email Config:
+	grue import rss2email.cfg
+
+* Add new Feed to Config:
+	grue add <name> <url>
+
+* Fetch Feeds as cron job:
+	*/5 * * * *		grue fetch
