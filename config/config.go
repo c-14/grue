@@ -2,16 +2,15 @@ package config
 
 import (
 	"encoding/json"
-	"log"
-	"path"
 	"os"
 	"os/user"
+	"path"
 )
 
 type AccountConfig struct {
-	URI			string
-	NameFormat	*string		`json:",omitempty"`
-	UserAgent	*string		`json:",omitempty"`
+	URI        string
+	NameFormat *string `json:",omitempty"`
+	UserAgent  *string `json:",omitempty"`
 }
 
 type GrueConfig struct {
@@ -21,7 +20,7 @@ type GrueConfig struct {
 	NameFormat  string
 	UserAgent   string
 	SmtpUser    *string
-	SmtpPass	*string
+	SmtpPass    *string
 	SmtpServer  *string
 	LogLevel    *string
 	Accounts    map[string]AccountConfig
@@ -30,7 +29,7 @@ type GrueConfig struct {
 func (conf *GrueConfig) String() string {
 	b, err := json.Marshal(conf)
 	if err != nil {
-		log.Panicln("Can't Marshal config")
+		panic("Can't Marshal config")
 	}
 	return string(b)
 }

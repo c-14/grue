@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/c-14/grue/config"
 	"fmt"
+	"github.com/c-14/grue/config"
 	"github.com/jaytaylor/html2text"
 	"github.com/mmcdole/gofeed"
 	"gopkg.in/gomail.v2"

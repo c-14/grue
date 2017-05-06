@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"path"
 )
@@ -15,7 +14,7 @@ type GrueHistory struct {
 func (hist *GrueHistory) String() string {
 	b, err := json.Marshal(hist)
 	if err != nil {
-		log.Panicln("Cant Marshal GrueHistory")
+		panic("Cant Marshal GrueHistory")
 	}
 	return string(b)
 }

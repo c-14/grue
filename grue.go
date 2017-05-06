@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/c-14/grue/config"
 	"errors"
 	"fmt"
-	"log"
+	"github.com/c-14/grue/config"
 	"os"
 )
 
@@ -30,7 +29,7 @@ func main() {
 	}
 	conf, err := config.ReadConfig()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	switch cmd := os.Args[1]; cmd {
 	case "add":
@@ -41,7 +40,7 @@ func main() {
 		go fetchFeeds(ret, conf)
 		for r := range ret {
 			if r != nil {
-				log.Println(r)
+				fmt.Println(r)
 				hasError = true
 			}
 		}
@@ -55,6 +54,6 @@ func main() {
 		os.Exit(EX_USAGE)
 	}
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 }
