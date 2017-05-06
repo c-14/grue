@@ -3,6 +3,7 @@ package main
 import (
 	"c-14/grue/config"
 	"fmt"
+	"github.com/jaytaylor/html2text"
 	"github.com/mmcdole/gofeed"
 	"gopkg.in/gomail.v2"
 	"strconv"
@@ -38,7 +39,13 @@ func (email *Email) Send(ch chan *gomail.Message) {
 	m.SetDateHeader("Date", email.Date)
 	m.SetDateHeader("X-Date", time.Now())
 	m.SetHeader("X-RSS-URI", email.ItemURI)
-	m.SetBody("text/plain", email.Body)
+	bodyPlain, err := html2text.FromString(email.Body)
+	if err != nil {
+		fmt.Printf("Failed to parse text as HTML: %v", email.Subject)
+		m.SetBody("text/html", email.Body)
+	} else {
+		m.SetBody("text/plain", bodyPlain)
+	}
 	ch <- m
 }
 
