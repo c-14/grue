@@ -28,11 +28,12 @@ func importDefault(text string) (*GrueConfig, error) {
 			return conf, nil
 		case hasPrefix(str, "to"):
 			rec := getValue(str)
-			conf.Recipient = &rec
+			conf.Recipient = rec
 		case hasPrefix(str, "from"):
 			conf.FromAddress = getValue(str)
 		case hasPrefix(str, "name-format"):
-			conf.NameFormat = getValue(str)
+			r := strings.NewReplacer("{feed.name}", "{name}", "{feed-title}", "{title}")
+			conf.NameFormat = r.Replace(getValue(str))
 		case hasPrefix(str, "smtp-server"):
 			serv := getValue(str)
 			conf.SmtpServer = &serv

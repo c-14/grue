@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"log"
-	"net/smtp"
 	"path"
 	"os"
 	"os/user"
@@ -17,11 +16,12 @@ type AccountConfig struct {
 
 type GrueConfig struct {
 	path        string
-	Recipient   *string
+	Recipient   string
 	FromAddress string
 	NameFormat  string
 	UserAgent   string
-	SmtpAuth    smtp.Auth
+	SmtpUser    *string
+	SmtpPass	*string
 	SmtpServer  *string
 	LogLevel    *string
 	Accounts    map[string]AccountConfig
@@ -65,7 +65,7 @@ func makeDefConfig() (*GrueConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	var conf = &GrueConfig{FromAddress: from, NameFormat: "{feed.name}: {feed-title}", UserAgent: "grue/{version}"}
+	var conf = &GrueConfig{FromAddress: from, NameFormat: "{name}: {title}", UserAgent: "grue/{version}"}
 	return conf, nil
 }
 
