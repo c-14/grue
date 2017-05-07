@@ -10,8 +10,9 @@ import (
 
 type FeedParser struct {
 	parser   *gofeed.Parser
-	sem      chan int
 	messages chan *Email
+	sem      chan int
+	finished chan int
 }
 
 type RSSFeed struct {
@@ -83,7 +84,9 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 	if err == nil {
 		account.LastFetched = account.LastQueried
 	}
+
 	<-fp.sem
+	fp.finished <- 1
 }
 
 func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
@@ -110,16 +113,21 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 		}()
 	}
 
-	fp := FeedParser{parser: gofeed.NewParser(), sem: make(chan int, 10), messages: ch}
-	for name, accountConfig := range conf.Accounts {
-		fp.sem <- 1
-		account, exist := hist.Feeds[name]
-		account.config = accountConfig
-		if !exist {
-			account.GUIDList = make(map[string]struct{})
+	fp := FeedParser{parser: gofeed.NewParser(), messages: ch, sem: make(chan int, 10), finished: make(chan int)}
+	go func() {
+		for name, accountConfig := range conf.Accounts {
+			fp.sem <- 1
+			account, exist := hist.Feeds[name]
+			account.config = accountConfig
+			if !exist {
+				account.GUIDList = make(map[string]struct{})
+			}
+			go fetchFeed(fp, name, &account, conf)
+			hist.Feeds[name] = account
 		}
-		go fetchFeed(fp, name, &account, conf)
-		hist.Feeds[name] = account
+	}()
+	for range conf.Accounts {
+		<-fp.finished
 	}
 	ret <- hist.Write()
 }
