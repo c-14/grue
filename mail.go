@@ -60,7 +60,7 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	return email
 }
 
-func startDialing(messages chan *gomail.Message, ret chan error, conf *config.GrueConfig) {
+func setupDialer(conf *config.GrueConfig) (gomail.SendCloser, error) {
 	var d *gomail.Dialer
 	var hostname string
 	var port int
@@ -68,8 +68,7 @@ func startDialing(messages chan *gomail.Message, ret chan error, conf *config.Gr
 	if conf.SmtpServer != nil {
 		parts := strings.Split(*conf.SmtpServer, ":")
 		if len(parts) > 2 {
-			ret <- fmt.Errorf("%s not a valid hostname\n", *conf.SmtpServer)
-			return
+			return nil, fmt.Errorf("%s not a valid hostname\n", *conf.SmtpServer)
 		} else if len(parts) == 1 {
 			hostname = parts[0]
 			port = 587
@@ -77,8 +76,7 @@ func startDialing(messages chan *gomail.Message, ret chan error, conf *config.Gr
 			hostname = parts[0]
 			port, err = strconv.Atoi(parts[1])
 			if err != nil {
-				ret <- fmt.Errorf("Failed to parse port: %v\n", err)
-				return
+				return nil, fmt.Errorf("Failed to parse port: %v\n", err)
 			}
 		}
 	} else {
@@ -91,11 +89,12 @@ func startDialing(messages chan *gomail.Message, ret chan error, conf *config.Gr
 		d = gomail.NewDialer(hostname, port, "", "")
 	}
 
-	s, err := d.Dial()
-	if err != nil {
-		ret <- err
-		return
-	}
+	return d.Dial()
+}
+
+func startDialing(s gomail.SendCloser, messages chan *gomail.Message, ret chan error) {
+	var err error
+
 	for m := range messages {
 		err = gomail.Send(s, m)
 		if err != nil {

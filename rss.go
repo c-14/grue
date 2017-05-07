@@ -91,7 +91,13 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 	}
 	ch := make(chan *gomail.Message, 5)
 	if !init {
-		go startDialing(ch, ret, conf)
+		s, err := setupDialer(conf)
+		if err != nil {
+			ret <- err
+			close(ret)
+			return
+		}
+		go startDialing(s, ch, ret)
 	} else {
 		go func() {
 			for range ch {
