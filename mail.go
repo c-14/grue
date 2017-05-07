@@ -19,6 +19,7 @@ type Email struct {
 	Subject     string
 	ItemURI     string
 	Body        string
+	ret         chan error
 }
 
 func (email *Email) setFrom(feedName string, feedTitle string, account config.AccountConfig, conf *config.GrueConfig) {
@@ -31,8 +32,15 @@ func (email *Email) setFrom(feedName string, feedTitle string, account config.Ac
 	email.FromAddress = conf.FromAddress
 }
 
-func (email *Email) Send(ch chan *gomail.Message, ret chan error) error {
+func (email *Email) Send(ch chan *Email) error {
+	var ret = email.ret
+	ch <- email
+	return <-ret
+}
+
+func (email *Email) format() *gomail.Message {
 	var err error
+
 	m := gomail.NewMessage()
 	m.SetAddressHeader("From", email.FromAddress, email.FromName)
 	m.SetHeader("To", email.Recipient)
@@ -47,8 +55,7 @@ func (email *Email) Send(ch chan *gomail.Message, ret chan error) error {
 	} else {
 		m.SetBody("text/plain", bodyPlain)
 	}
-	ch <- m
-	return <-ret
+	return m
 }
 
 func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time.Time, account config.AccountConfig, conf *config.GrueConfig) *Email {
@@ -59,6 +66,7 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	email.Date = date
 	email.ItemURI = item.Link
 	email.Body = item.Description
+	email.ret = make(chan error)
 	return email
 }
 
@@ -94,22 +102,23 @@ func setupDialer(conf *config.GrueConfig) (gomail.SendCloser, error) {
 	return d.Dial()
 }
 
-func refuseConnections(messages chan *gomail.Message, smtpErr chan error) {
-	for range messages {
-		smtpErr <- fmt.Errorf("Aborting due to previous smtp error")
+func refuseConnections(messages chan *Email) {
+	for m := range messages {
+		m.ret <- fmt.Errorf("Aborting due to previous smtp error")
 	}
 }
 
-func startDialing(s gomail.SendCloser, messages chan *gomail.Message, smtpErr chan error, ret chan error) {
+func startDialing(s gomail.SendCloser, messages chan *Email, ret chan error) {
 	var err error
 
-	for m := range messages {
+	for email := range messages {
+		m := email.format()
 		err = gomail.Send(s, m)
-		smtpErr <- err
+		email.ret <- err
 		if err != nil {
 			ret <- err
 			ret <- s.Close()
-			refuseConnections(messages, smtpErr)
+			refuseConnections(messages)
 			return
 		}
 	}

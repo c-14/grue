@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/c-14/grue/config"
 	"github.com/mmcdole/gofeed"
-	"gopkg.in/gomail.v2"
 	"math"
 	"time"
 )
@@ -12,8 +11,7 @@ import (
 type FeedParser struct {
 	parser   *gofeed.Parser
 	sem      chan int
-	messages chan *gomail.Message
-	sendErr  chan error
+	messages chan *Email
 }
 
 type RSSFeed struct {
@@ -70,12 +68,12 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 	for _, item := range feed.Items {
 		if newer, date := hasNewerDate(item, account.LastFetched); newer {
 			e := createEmail(feedName, feed.Title, item, date, account.config, config)
-			err = e.Send(fp.messages, fp.sendErr)
+			err = e.Send(fp.messages)
 		} else {
 			_, exists := guids[item.GUID]
 			if !exists {
 				e := createEmail(feedName, feed.Title, item, date, account.config, config)
-				err = e.Send(fp.messages, fp.sendErr)
+				err = e.Send(fp.messages)
 			}
 			if err == nil {
 				account.GUIDList[item.GUID] = struct{}{}
@@ -95,26 +93,24 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 		ret <- err
 		return
 	}
-	ch := make(chan *gomail.Message)
-	sendErr := make(chan error)
+	ch := make(chan *Email)
 	defer close(ch)
-	defer close(sendErr)
 	if !init {
 		s, err := setupDialer(conf)
 		if err != nil {
 			ret <- err
 			return
 		}
-		go startDialing(s, ch, sendErr, ret)
+		go startDialing(s, ch, ret)
 	} else {
 		go func() {
-			for range ch {
-				sendErr <- nil
+			for m := range ch {
+				m.ret <- nil
 			}
 		}()
 	}
 
-	fp := FeedParser{parser: gofeed.NewParser(), sem: make(chan int, 10), messages: ch, sendErr: sendErr}
+	fp := FeedParser{parser: gofeed.NewParser(), sem: make(chan int, 10), messages: ch}
 	for name, accountConfig := range conf.Accounts {
 		fp.sem <- 1
 		account, exist := hist.Feeds[name]
