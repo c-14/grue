@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+type FeedParser struct {
+	parser   *gofeed.Parser
+	sem      chan int
+	messages chan *gomail.Message
+	sendErr  chan error
+}
+
 type RSSFeed struct {
 	config      config.AccountConfig
 	LastFetched int64               `json:",omitempty"`
@@ -36,7 +43,7 @@ func hasNewerDate(item *gofeed.Item, lastFetched int64) (bool, time.Time) {
 	return false, time.Now()
 }
 
-func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, sendErr chan error, feedName string, account *RSSFeed, config *config.GrueConfig) {
+func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.GrueConfig) {
 	// if account.UserAgent != nil {
 	// 	feed.SetUserAgent(*account.UserAgent)
 	// }
@@ -44,7 +51,7 @@ func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, sendErr chan error, f
 	if account.NextQuery > now.Unix() {
 		return
 	}
-	feed, err := fp.ParseURL(account.config.URI)
+	feed, err := fp.parser.ParseURL(account.config.URI)
 	account.LastQueried = now.Unix()
 	if err != nil {
 		if account.Tries > 0 {
@@ -63,12 +70,12 @@ func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, sendErr chan error, f
 	for _, item := range feed.Items {
 		if newer, date := hasNewerDate(item, account.LastFetched); newer {
 			e := createEmail(feedName, feed.Title, item, date, account.config, config)
-			err = e.Send(ch, sendErr)
+			err = e.Send(fp.messages, fp.sendErr)
 		} else {
 			_, exists := guids[item.GUID]
 			if !exists {
 				e := createEmail(feedName, feed.Title, item, date, account.config, config)
-				err = e.Send(ch, sendErr)
+				err = e.Send(fp.messages, fp.sendErr)
 			}
 			if err == nil {
 				account.GUIDList[item.GUID] = struct{}{}
@@ -78,7 +85,7 @@ func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, sendErr chan error, f
 	if err == nil {
 		account.LastFetched = account.LastQueried
 	}
-	return
+	<-fp.sem
 }
 
 func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
@@ -107,14 +114,15 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 		}()
 	}
 
-	fp := gofeed.NewParser()
+	fp := FeedParser{parser: gofeed.NewParser(), sem: make(chan int, 10), messages: ch, sendErr: sendErr}
 	for name, accountConfig := range conf.Accounts {
+		fp.sem <- 1
 		account, exist := hist.Feeds[name]
 		account.config = accountConfig
 		if !exist {
 			account.GUIDList = make(map[string]struct{})
 		}
-		fetchFeed(fp, ch, sendErr, name, &account, conf)
+		go fetchFeed(fp, name, &account, conf)
 		hist.Feeds[name] = account
 	}
 	ret <- hist.Write()
