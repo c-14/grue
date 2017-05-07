@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/c-14/grue/config"
 	"os"
@@ -10,7 +11,13 @@ import (
 const version = "0.1-alpha"
 
 func usage() string {
-	return "usage: grue {add|fetch|import} ..."
+	return `usage: grue [--help] {add|fetch|import|init_cfg} ...
+
+Subcommands:
+	add <name> <url>
+	fetch [-init]
+	import <config>
+	init_cfg`
 }
 
 func add(args []string, conf *config.GrueConfig) error {
@@ -22,6 +29,22 @@ func add(args []string, conf *config.GrueConfig) error {
 	return conf.AddAccount(name, uri)
 }
 
+func fetch(init bool, conf *config.GrueConfig) error {
+	var hasError bool = false
+	ret := make(chan error)
+	go fetchFeeds(ret, conf, init)
+	for r := range ret {
+		if r != nil {
+			fmt.Fprintln(os.Stderr, r)
+			hasError = true
+		}
+	}
+	if hasError {
+		return errors.New("grue encountered errors during fetch")
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, usage())
@@ -29,31 +52,31 @@ func main() {
 	}
 	conf, err := config.ReadConfig()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 	switch cmd := os.Args[1]; cmd {
 	case "add":
 		err = add(os.Args[2:], conf)
 	case "fetch":
-		var hasError bool = false
-		ret := make(chan error)
-		go fetchFeeds(ret, conf)
-		for r := range ret {
-			if r != nil {
-				fmt.Println(r)
-				hasError = true
-			}
-		}
-		if hasError {
-			os.Exit(EX_SOFTWARE)
+		var fetchCmd = flag.NewFlagSet("fetch", flag.ExitOnError)
+		var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
+		err = fetchCmd.Parse(os.Args[2:])
+		if err == nil {
+			err = fetch(*initFlag, conf)
 		}
 	case "import":
 		err = config.ImportCfg(os.Args[2:])
+	case "init_cfg":
+		break
+	case "-h":
+		fallthrough
+	case "--help":
+		fmt.Println(usage())
 	default:
 		fmt.Fprintln(os.Stderr, usage())
 		os.Exit(EX_USAGE)
 	}
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }

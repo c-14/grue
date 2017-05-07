@@ -82,7 +82,7 @@ func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, feedName string, acco
 	return
 }
 
-func fetchFeeds(ret chan error, conf *config.GrueConfig) {
+func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 	hist, err := ReadHistory()
 	if err != nil {
 		ret <- err
@@ -90,7 +90,15 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig) {
 		return
 	}
 	ch := make(chan *gomail.Message, 5)
-	go startDialing(ch, ret, conf)
+	if !init {
+		go startDialing(ch, ret, conf)
+	} else {
+		go func() {
+			for range ch {
+			}
+		}()
+	}
+
 	fp := gofeed.NewParser()
 	for name, accountConfig := range conf.Accounts {
 		account, exist := hist.Feeds[name]
