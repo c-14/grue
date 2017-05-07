@@ -119,7 +119,7 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 			fp.sem <- 1
 			account, exist := hist.Feeds[name]
 			account.config = accountConfig
-			if !exist {
+			if !exist || len(account.GUIDList) == 0 {
 				account.GUIDList = make(map[string]struct{})
 			}
 			go fetchFeed(fp, name, &account, conf)
