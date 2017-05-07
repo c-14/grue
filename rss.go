@@ -36,7 +36,7 @@ func hasNewerDate(item *gofeed.Item, lastFetched int64) (bool, time.Time) {
 	return false, time.Now()
 }
 
-func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, feedName string, account *RSSFeed, config *config.GrueConfig) {
+func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, sendErr chan error, feedName string, account *RSSFeed, config *config.GrueConfig) {
 	// if account.UserAgent != nil {
 	// 	feed.SetUserAgent(*account.UserAgent)
 	// }
@@ -61,46 +61,48 @@ func fetchFeed(fp *gofeed.Parser, ch chan *gomail.Message, feedName string, acco
 		account.GUIDList = make(map[string]struct{})
 	}
 	for _, item := range feed.Items {
-		// fmt.Printf("Item: %v (%v)\n\t %v: %v %v\n", item.Title, item.Link, item.GUID, item.Updated, item.Published)
-		// b, _ := json.MarshalIndent(item, "", "  ")
-		// fmt.Printf("Item: %v\n", string(b))
 		if newer, date := hasNewerDate(item, account.LastFetched); newer {
-			// fmt.Printf("New item [%v]: %v (%v)\n", date, item.Title, item.Link)
 			e := createEmail(feedName, feed.Title, item, date, account.config, config)
-			e.Send(ch)
+			err = e.Send(ch, sendErr)
 		} else {
 			_, exists := guids[item.GUID]
 			if !exists {
-				// fmt.Printf("New uid: %v (%v)\n", item.Title, item.Link)
 				e := createEmail(feedName, feed.Title, item, date, account.config, config)
-				e.Send(ch)
+				err = e.Send(ch, sendErr)
 			}
-			account.GUIDList[item.GUID] = struct{}{}
+			if err == nil {
+				account.GUIDList[item.GUID] = struct{}{}
+			}
 		}
 	}
-	account.LastFetched = account.LastQueried
+	if err == nil {
+		account.LastFetched = account.LastQueried
+	}
 	return
 }
 
 func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
+	defer close(ret)
 	hist, err := ReadHistory()
 	if err != nil {
 		ret <- err
-		close(ret)
 		return
 	}
-	ch := make(chan *gomail.Message, 5)
+	ch := make(chan *gomail.Message)
+	sendErr := make(chan error)
+	defer close(ch)
+	defer close(sendErr)
 	if !init {
 		s, err := setupDialer(conf)
 		if err != nil {
 			ret <- err
-			close(ret)
 			return
 		}
-		go startDialing(s, ch, ret)
+		go startDialing(s, ch, sendErr, ret)
 	} else {
 		go func() {
 			for range ch {
+				sendErr <- nil
 			}
 		}()
 	}
@@ -112,10 +114,8 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 		if !exist {
 			account.GUIDList = make(map[string]struct{})
 		}
-		fetchFeed(fp, ch, name, &account, conf)
+		fetchFeed(fp, ch, sendErr, name, &account, conf)
 		hist.Feeds[name] = account
 	}
-	close(ch)
 	ret <- hist.Write()
-	close(ret)
 }

@@ -31,7 +31,8 @@ func (email *Email) setFrom(feedName string, feedTitle string, account config.Ac
 	email.FromAddress = conf.FromAddress
 }
 
-func (email *Email) Send(ch chan *gomail.Message) {
+func (email *Email) Send(ch chan *gomail.Message, ret chan error) error {
+	var err error
 	m := gomail.NewMessage()
 	m.SetAddressHeader("From", email.FromAddress, email.FromName)
 	m.SetHeader("To", email.Recipient)
@@ -47,6 +48,7 @@ func (email *Email) Send(ch chan *gomail.Message) {
 		m.SetBody("text/plain", bodyPlain)
 	}
 	ch <- m
+	return <-ret
 }
 
 func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time.Time, account config.AccountConfig, conf *config.GrueConfig) *Email {
@@ -92,13 +94,23 @@ func setupDialer(conf *config.GrueConfig) (gomail.SendCloser, error) {
 	return d.Dial()
 }
 
-func startDialing(s gomail.SendCloser, messages chan *gomail.Message, ret chan error) {
+func refuseConnections(messages chan *gomail.Message, smtpErr chan error) {
+	for range messages {
+		smtpErr <- fmt.Errorf("Aborting due to previous smtp error")
+	}
+}
+
+func startDialing(s gomail.SendCloser, messages chan *gomail.Message, smtpErr chan error, ret chan error) {
 	var err error
 
 	for m := range messages {
 		err = gomail.Send(s, m)
+		smtpErr <- err
 		if err != nil {
 			ret <- err
+			ret <- s.Close()
+			refuseConnections(messages, smtpErr)
+			return
 		}
 	}
 
