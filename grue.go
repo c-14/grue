@@ -53,7 +53,9 @@ func main() {
 	conf, err := config.ReadConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(EX_TEMPFAIL)
 	}
+	defer conf.Unlock()
 	switch cmd := os.Args[1]; cmd {
 	case "add":
 		err = add(os.Args[2:], conf)

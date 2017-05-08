@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"encoding/json"
 	"os"
 	"os/user"
@@ -24,6 +25,24 @@ type GrueConfig struct {
 	SmtpServer  *string
 	LogLevel    *string
 	Accounts    map[string]AccountConfig
+}
+
+func (conf *GrueConfig) Lock() error {
+	lock, err := os.OpenFile(conf.path+".lock", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	switch {
+	case err == nil:
+		defer lock.Close()
+		_, err = lock.WriteString(string(os.Getpid()))
+		return err
+	case os.IsExist(err):
+		return fmt.Errorf("Aborting due to existing lock on %s\n", conf.path)
+	default:
+		return err
+	}
+}
+
+func (conf *GrueConfig) Unlock() error {
+	return os.Remove(conf.path + ".lock")
 }
 
 func (conf *GrueConfig) String() string {
@@ -91,10 +110,14 @@ func getConfigPath() string {
 
 func ReadConfig() (*GrueConfig, error) {
 	var conf *GrueConfig = new(GrueConfig)
-	var path = getConfigPath()
-	file, err := os.Open(path)
+	conf.path = getConfigPath()
+	err := conf.Lock()
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.Open(conf.path)
 	if os.IsNotExist(err) {
-		return writeDefConfig(path)
+		return writeDefConfig(conf.path)
 	} else if err != nil {
 		return nil, err
 	}
@@ -104,7 +127,6 @@ func ReadConfig() (*GrueConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf.path = path
 	return conf, nil
 }
 
