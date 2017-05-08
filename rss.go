@@ -66,6 +66,8 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 	// }
 	now := time.Now()
 	if account.NextQuery > now.Unix() {
+		<-fp.sem
+		fp.finished <- 1
 		return
 	}
 	feed, err := fp.parser.ParseURL(account.config.URI)
@@ -76,6 +78,8 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 		}
 		account.Tries++
 		fmt.Printf("Caught error when parsing %s: %s\n", account.config.URI, err)
+		<-fp.sem
+		fp.finished <- 1
 		return
 	}
 	account.NextQuery = 0
