@@ -8,7 +8,7 @@ import (
 
 type GrueHistory struct {
 	path  string
-	Feeds map[string]RSSFeed
+	Feeds map[string]*RSSFeed
 }
 
 func (hist *GrueHistory) String() string {
@@ -31,7 +31,7 @@ func (hist *GrueHistory) Write() error {
 }
 
 func makeDefHistory() (*GrueHistory, error) {
-	var feeds = make(map[string]RSSFeed)
+	var feeds = make(map[string]*RSSFeed)
 	var hist = &GrueHistory{Feeds: feeds}
 	return hist, nil
 }
