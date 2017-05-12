@@ -108,9 +108,10 @@ func refuseConnections(messages chan *Email) {
 	}
 }
 
-func startDialing(s gomail.SendCloser, messages chan *Email, ret chan error) {
+func startDialing(s gomail.SendCloser, messages chan *Email, fin chan int, ret chan error) {
 	var err error
 
+	defer close(fin)
 	for email := range messages {
 		m := email.format()
 		err = gomail.Send(s, m)
@@ -119,9 +120,11 @@ func startDialing(s gomail.SendCloser, messages chan *Email, ret chan error) {
 			ret <- err
 			ret <- s.Close()
 			refuseConnections(messages)
+			fin <- 1
 			return
 		}
 	}
 
 	ret <- s.Close()
+	fin <- 1
 }

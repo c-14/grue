@@ -118,21 +118,23 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 }
 
 func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
+	var ch chan *Email
+	var dial chan int
 	defer close(ret)
 	hist, err := ReadHistory()
 	if err != nil {
 		ret <- err
 		return
 	}
-	ch := make(chan *Email)
-	defer close(ch)
 	if !init {
 		s, err := setupDialer(conf)
 		if err != nil {
 			ret <- err
 			return
 		}
-		go startDialing(s, ch, ret)
+		ch = make(chan *Email)
+		dial = make(chan int)
+		go startDialing(s, ch, dial, ret)
 	} else {
 		go func() {
 			for m := range ch {
@@ -161,4 +163,6 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 		<-fp.finished
 	}
 	ret <- hist.Write()
+	close(ch)
+	<-dial
 }
