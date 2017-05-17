@@ -118,8 +118,8 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 }
 
 func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
-	var ch chan *Email
-	var dial chan int
+	var ch chan *Email = make(chan *Email)
+	var dial chan int = make(chan int)
 	defer close(ret)
 	hist, err := ReadHistory()
 	if err != nil {
@@ -132,8 +132,6 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 			ret <- err
 			return
 		}
-		ch = make(chan *Email)
-		dial = make(chan int)
 		go startDialing(s, ch, dial, ret)
 	} else {
 		go func() {
@@ -141,6 +139,7 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 				m.ret <- nil
 			}
 		}()
+		close(dial)
 	}
 
 	fp := FeedParser{parser: gofeed.NewParser(), messages: ch, sem: make(chan int, 10), finished: make(chan int)}
