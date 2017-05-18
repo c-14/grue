@@ -77,7 +77,9 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 			account.NextQuery = now.Add(time.Duration(math.Exp2(float64(account.Tries+4))) * time.Minute).Unix()
 		}
 		account.Tries++
-		fmt.Printf("Caught error when parsing %s: %s\n", account.config.URI, err)
+		if account.Tries > 1 {
+			fmt.Printf("Caught error (#%d) when parsing %s: %s\n", account.Tries, account.config.URI, err)
+		}
 		<-fp.sem
 		fp.finished <- 1
 		return
