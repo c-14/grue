@@ -91,28 +91,20 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 		account.GUIDList = make(map[string]struct{})
 	}
 	for _, item := range feed.Items {
+		_, exists := guids[item.GUID]
 		date, newer := hasNewerDate(item, account.LastFetched)
-		if newer == DateNewer {
+		if !exists || (item.GUID == "" && newer == DateNewer) {
 			e := createEmail(feedName, feed.Title, item, date, account.config, config)
 			err = e.Send(fp.messages)
-			if err != nil {
-				break
-			}
-		} else if newer == NoDate {
-			_, exists := guids[item.GUID]
-			if !exists {
-				e := createEmail(feedName, feed.Title, item, date, account.config, config)
-				err = e.Send(fp.messages)
-			}
-			if err == nil {
-				account.GUIDList[item.GUID] = struct{}{}
-			} else {
-				break
-			}
+		}
+		if err == nil {
+			account.GUIDList[item.GUID] = struct{}{}
+		} else {
+			break
 		}
 	}
 	if err == nil {
-		account.LastFetched = account.LastQueried
+		account.LastFetched = time.Now().Unix()
 	}
 
 	<-fp.sem
