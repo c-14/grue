@@ -70,6 +70,10 @@ func main() {
 		err = config.ImportCfg(os.Args[2:])
 	case "init_cfg":
 		break
+	case "-v":
+		fallthrough
+	case "--version":
+		fmt.Println(version)
 	case "-h":
 		fallthrough
 	case "--help":
