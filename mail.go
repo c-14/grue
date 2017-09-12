@@ -6,7 +6,8 @@ import (
 	"github.com/jaytaylor/html2text"
 	"github.com/mmcdole/gofeed"
 	"gopkg.in/gomail.v2"
-	"strconv"
+	"io"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -19,7 +20,6 @@ type Email struct {
 	Subject     string
 	ItemURI     string
 	Body        string
-	ret         chan error
 }
 
 func (email *Email) setFrom(feedName string, feedTitle string, account config.AccountConfig, conf *config.GrueConfig) {
@@ -32,10 +32,9 @@ func (email *Email) setFrom(feedName string, feedTitle string, account config.Ac
 	email.FromAddress = conf.FromAddress
 }
 
-func (email *Email) Send(ch chan *Email) error {
-	var ret = email.ret
-	ch <- email
-	return <-ret
+func (email *Email) Send() error {
+	m := email.format()
+	return gomail.Send(gomail.SendFunc(sendMail), m)
 }
 
 func (email *Email) format() *gomail.Message {
@@ -66,65 +65,24 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	email.Date = date
 	email.ItemURI = item.Link
 	email.Body = item.Description
-	email.ret = make(chan error)
 	return email
 }
 
-func setupDialer(conf *config.GrueConfig) (gomail.SendCloser, error) {
-	var d *gomail.Dialer
-	var hostname string
-	var port int
-	var err error
-	if conf.SmtpServer != nil {
-		parts := strings.Split(*conf.SmtpServer, ":")
-		if len(parts) > 2 {
-			return nil, fmt.Errorf("%s not a valid hostname\n", *conf.SmtpServer)
-		} else if len(parts) == 1 {
-			hostname = parts[0]
-			port = 587
-		} else {
-			hostname = parts[0]
-			port, err = strconv.Atoi(parts[1])
-			if err != nil {
-				return nil, fmt.Errorf("Failed to parse port: %v\n", err)
-			}
-		}
-	} else {
-		hostname = "localhost"
-		port = 25
+func sendMail(from string, to []string, msg io.WriterTo) error {
+	cmd := exec.Command("sendmail", "-oi", "-t")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
 	}
-	if conf.SmtpUser != nil {
-		d = gomail.NewDialer(hostname, port, *conf.SmtpUser, *conf.SmtpPass)
-	} else {
-		d = gomail.NewDialer(hostname, port, "", "")
+	err = cmd.Start()
+	if err != nil {
+		return err
 	}
-
-	return d.Dial()
-}
-
-func refuseConnections(messages chan *Email) {
-	for m := range messages {
-		m.ret <- fmt.Errorf("Aborting due to previous smtp error")
+	_, err = msg.WriteTo(stdin)
+	if err != nil {
+		stdin.Close()
+		return err
 	}
-}
-
-func startDialing(s gomail.SendCloser, messages chan *Email, fin chan int, ret chan error) {
-	var err error
-
-	defer close(fin)
-	for email := range messages {
-		m := email.format()
-		err = gomail.Send(s, m)
-		email.ret <- err
-		if err != nil {
-			ret <- err
-			ret <- s.Close()
-			refuseConnections(messages)
-			fin <- 1
-			return
-		}
-	}
-
-	ret <- s.Close()
-	fin <- 1
+	stdin.Close()
+	return cmd.Wait()
 }

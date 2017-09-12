@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const version = "0.1-alpha"
+const version = "0.2.0-alpha"
 
 func usage() string {
 	return `usage: grue [--help] {add|fetch|import|init_cfg} ...
@@ -27,22 +27,6 @@ func add(args []string, conf *config.GrueConfig) error {
 	var name string = args[0]
 	var uri string = args[1]
 	return conf.AddAccount(name, uri)
-}
-
-func fetch(init bool, conf *config.GrueConfig) error {
-	var hasError bool = false
-	ret := make(chan error)
-	go fetchFeeds(ret, conf, init)
-	for r := range ret {
-		if r != nil {
-			fmt.Fprintln(os.Stderr, r)
-			hasError = true
-		}
-	}
-	if hasError {
-		return errors.New("grue encountered errors during fetch")
-	}
-	return nil
 }
 
 func main() {
@@ -64,7 +48,7 @@ func main() {
 		var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
 		err = fetchCmd.Parse(os.Args[2:])
 		if err == nil {
-			err = fetch(*initFlag, conf)
+			err = fetchFeeds(conf, *initFlag)
 		}
 	case "import":
 		err = config.ImportCfg(os.Args[2:])

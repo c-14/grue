@@ -5,12 +5,13 @@ import (
 	"github.com/c-14/grue/config"
 	"github.com/mmcdole/gofeed"
 	"math"
+	"os"
 	"time"
 )
 
 type FeedParser struct {
 	parser   *gofeed.Parser
-	messages chan *Email
+	init     bool
 	sem      chan int
 	finished chan int
 }
@@ -91,16 +92,21 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 		account.GUIDList = make(map[string]struct{})
 	}
 	for _, item := range feed.Items {
-		_, exists := guids[item.GUID]
-		date, newer := hasNewerDate(item, account.LastFetched)
-		if !exists || (item.GUID == "" && newer == DateNewer) {
-			e := createEmail(feedName, feed.Title, item, date, account.config, config)
-			err = e.Send(fp.messages)
-		}
-		if err == nil {
+		if fp.init {
 			account.GUIDList[item.GUID] = struct{}{}
 		} else {
-			break
+			_, exists := guids[item.GUID]
+			date, newer := hasNewerDate(item, account.LastFetched)
+			if !exists || (item.GUID == "" && newer == DateNewer) {
+				e := createEmail(feedName, feed.Title, item, date, account.config, config)
+				err = e.Send()
+			}
+			if err == nil {
+				account.GUIDList[item.GUID] = struct{}{}
+			} else {
+				fmt.Fprintln(os.Stderr, err)
+				break
+			}
 		}
 	}
 	if err == nil {
@@ -111,32 +117,15 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 	fp.finished <- 1
 }
 
-func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
-	var ch chan *Email = make(chan *Email)
-	var dial chan int = make(chan int)
-	defer close(ret)
+func fetchFeeds(conf *config.GrueConfig, init bool) error {
 	hist, err := ReadHistory()
 	if err != nil {
-		ret <- err
-		return
+		return err
 	}
-	if !init {
-		s, err := setupDialer(conf)
-		if err != nil {
-			ret <- err
-			return
-		}
-		go startDialing(s, ch, dial, ret)
-	} else {
-		go func() {
-			for m := range ch {
-				m.ret <- nil
-			}
-		}()
-		close(dial)
+	if init {
 	}
 
-	fp := FeedParser{parser: gofeed.NewParser(), messages: ch, sem: make(chan int, 10), finished: make(chan int)}
+	fp := FeedParser{parser: gofeed.NewParser(), init: init, sem: make(chan int, 10), finished: make(chan int)}
 	go func() {
 		for name, accountConfig := range conf.Accounts {
 			fp.sem <- 1
@@ -155,7 +144,5 @@ func fetchFeeds(ret chan error, conf *config.GrueConfig, init bool) {
 	for range conf.Accounts {
 		<-fp.finished
 	}
-	ret <- hist.Write()
-	close(ch)
-	<-dial
+	return hist.Write()
 }
