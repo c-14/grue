@@ -76,6 +76,7 @@ func main() {
 		fmt.Println(usage())
 	default:
 		fmt.Fprintln(os.Stderr, usage())
+		conf.Unlock()
 		os.Exit(EX_USAGE)
 	}
 	if err != nil {
