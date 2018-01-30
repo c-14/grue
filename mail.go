@@ -18,6 +18,7 @@ type Email struct {
 	Recipient   string
 	Date        time.Time
 	Subject     string
+	UserAgent   string
 	ItemURI     string
 	Body        string
 }
@@ -30,6 +31,13 @@ func (email *Email) setFrom(feedName string, feedTitle string, account config.Ac
 		email.FromName = r.Replace(conf.NameFormat)
 	}
 	email.FromAddress = conf.FromAddress
+}
+
+func (email *Email) setUserAgent(conf *config.GrueConfig) {
+	if conf.UserAgent != "" {
+		r := strings.NewReplacer("{version}", version)
+		email.UserAgent = r.Replace(conf.UserAgent)
+	}
 }
 
 func (email *Email) Send() error {
@@ -46,6 +54,9 @@ func (email *Email) format() *gomail.Message {
 	m.SetHeader("Subject", email.Subject)
 	m.SetDateHeader("Date", email.Date)
 	m.SetDateHeader("X-Date", time.Now())
+	if email.UserAgent != "" {
+		m.SetHeader("User-Agent", email.UserAgent)
+	}
 	m.SetHeader("X-RSS-URI", email.ItemURI)
 	bodyPlain, err := html2text.FromString(email.Body)
 	if err != nil {
@@ -63,6 +74,7 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	email.Recipient = conf.Recipient
 	email.Subject = item.Title
 	email.Date = date
+	email.setUserAgent(conf)
 	email.ItemURI = item.Link
 	email.Body = item.Description
 	return email
