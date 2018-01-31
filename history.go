@@ -75,3 +75,15 @@ func ReadHistory() (*GrueHistory, error) {
 	hist.path = path
 	return hist, nil
 }
+
+func DeleteHistory(name string) error {
+	hist, err := ReadHistory()
+	if err != nil {
+		return err
+	}
+	if _, ok := hist.Feeds[name]; !ok {
+		return nil
+	}
+	delete(hist.Feeds, name)
+	return hist.Write()
+}
