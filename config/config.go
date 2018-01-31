@@ -1,17 +1,33 @@
 package config
 
 import (
-	"fmt"
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/user"
 	"path"
+	"text/tabwriter"
 )
 
 type AccountConfig struct {
 	URI        string
 	NameFormat *string `json:",omitempty"`
 	UserAgent  *string `json:",omitempty"`
+}
+
+func (cfg AccountConfig) String() string {
+	var b bytes.Buffer
+	w := tabwriter.NewWriter(&b, 0, 8, 0, '\t', 0)
+	fmt.Fprintf(w, "URI\t\"%s\"\n", cfg.URI)
+	if cfg.NameFormat != nil {
+		fmt.Fprintf(w, "Name format\t\"%s\"\n", *cfg.NameFormat)
+	}
+	if cfg.UserAgent != nil {
+		fmt.Fprintf(w, "User Agent\t\"%s\"\n", *cfg.UserAgent)
+	}
+	w.Flush()
+	return b.String()
 }
 
 type GrueConfig struct {
