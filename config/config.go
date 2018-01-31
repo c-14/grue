@@ -154,3 +154,15 @@ func (conf *GrueConfig) AddAccount(name, uri string) error {
 	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
 	return conf.write(conf.path)
 }
+
+func (conf *GrueConfig) DeleteAccount(name string) error {
+	if conf.Accounts == nil {
+		return nil
+	}
+	if _, ok := conf.Accounts[name]; !ok {
+		return fmt.Errorf("%s: account does not exist", name)
+	}
+	delete(conf.Accounts, name)
+	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
+	return conf.write(conf.path)
+}
