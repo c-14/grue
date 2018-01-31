@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path"
@@ -82,18 +83,25 @@ func defaultFrom() (string, error) {
 	return from, nil
 }
 
-func (conf *GrueConfig) write(path string) error {
-	file, err := os.Create(path)
+func (conf *GrueConfig) encode(file *os.File) error {
+	enc := json.NewEncoder(file)
+	enc.SetIndent("", "  ")
+	return enc.Encode(conf)
+}
+
+func (conf *GrueConfig) save() error {
+	tmpfile, err := ioutil.TempFile(path.Dir(conf.path), path.Base(conf.path))
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "  ")
-	err = enc.Encode(conf)
-	return err
+	err = conf.encode(tmpfile)
+	tmpfile.Close()
+	if err != nil {
+		os.Remove(tmpfile.Name())
+		return err
+	}
+	return os.Rename(tmpfile.Name(), conf.path)
 }
-
 func makeDefConfig() (*GrueConfig, error) {
 	from, err := defaultFrom()
 	if err != nil {
@@ -109,7 +117,7 @@ func writeDefConfig(path string) (*GrueConfig, error) {
 		return nil, err
 	}
 	conf.path = path
-	return conf, conf.write(path)
+	return conf, conf.save()
 }
 
 func getConfigPath() string {
@@ -151,8 +159,7 @@ func (conf *GrueConfig) AddAccount(name, uri string) error {
 		conf.Accounts = make(map[string]AccountConfig)
 	}
 	conf.Accounts[name] = AccountConfig{URI: uri}
-	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
-	return conf.write(conf.path)
+	return conf.save()
 }
 
 func (conf *GrueConfig) DeleteAccount(name string) error {
@@ -163,6 +170,5 @@ func (conf *GrueConfig) DeleteAccount(name string) error {
 		return fmt.Errorf("%s: account does not exist", name)
 	}
 	delete(conf.Accounts, name)
-	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
-	return conf.write(conf.path)
+	return conf.save()
 }

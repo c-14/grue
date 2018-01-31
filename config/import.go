@@ -91,6 +91,5 @@ func ImportCfg(args []string) error {
 		}
 		conf.Accounts[name] = AccountConfig{URI: uri}
 	}
-	// TODO: Use ioutil.TempFile and os.Rename to make this atomic
-	return conf.write(conf.path)
+	return conf.save()
 }
