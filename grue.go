@@ -44,7 +44,7 @@ func main() {
 	case "add":
 		err = add(os.Args[2:], conf)
 	case "fetch":
-		var fetchCmd = flag.NewFlagSet("fetch", flag.ExitOnError)
+		var fetchCmd = flag.NewFlagSet("fetch", flag.ContinueOnError)
 		var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
 		err = fetchCmd.Parse(os.Args[2:])
 		if err == nil {
