@@ -12,10 +12,11 @@ import (
 const version = "0.2.0-alpha"
 
 func usage() string {
-	return `usage: grue [--help] {add|fetch|import|init_cfg|list} ...
+	return `usage: grue [--help] {add|delete|fetch|import|init_cfg|list} ...
 
 Subcommands:
 	add <name> <url>
+	delete <name>
 	fetch [-init]
 	import <config>
 	init_cfg
@@ -29,6 +30,17 @@ func add(args []string, conf *config.GrueConfig) error {
 	var name string = args[0]
 	var uri string = args[1]
 	return conf.AddAccount(name, uri)
+}
+
+func del(args []string, conf *config.GrueConfig) error {
+	if len(args) != 1 {
+		return errors.New("usage: grue delete <name>")
+	}
+	name := args[0]
+	if err := conf.DeleteAccount(name); err != nil {
+		return err
+	}
+	return DeleteHistory(name)
 }
 
 func list(args []string, conf *config.GrueConfig) error {
@@ -82,6 +94,8 @@ func main() {
 	switch cmd := os.Args[1]; cmd {
 	case "add":
 		err = add(os.Args[2:], conf)
+	case "delete":
+		err = del(os.Args[2:], conf)
 	case "fetch":
 		var fetchCmd = flag.NewFlagSet("fetch", flag.ContinueOnError)
 		var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
