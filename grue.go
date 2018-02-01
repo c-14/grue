@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"github.com/c-14/grue/config"
 	"os"
+	"text/tabwriter"
 )
 
 const version = "0.2.0-alpha"
 
 func usage() string {
-	return `usage: grue [--help] {add|fetch|import|init_cfg} ...
+	return `usage: grue [--help] {add|fetch|import|init_cfg|list} ...
 
 Subcommands:
 	add <name> <url>
 	fetch [-init]
 	import <config>
-	init_cfg`
+	init_cfg
+	list [name] [--full]`
 }
 
 func add(args []string, conf *config.GrueConfig) error {
@@ -27,6 +29,43 @@ func add(args []string, conf *config.GrueConfig) error {
 	var name string = args[0]
 	var uri string = args[1]
 	return conf.AddAccount(name, uri)
+}
+
+func list(args []string, conf *config.GrueConfig) error {
+	const (
+		fmtShort = "%s\t%s\n"
+		fmtFull  = "%s:\n%s\n"
+	)
+	var full bool
+	var listCmd = flag.NewFlagSet("list", flag.ContinueOnError)
+	listCmd.BoolVar(&full, "full", false, "Show full account info")
+	if err := listCmd.Parse(args); err != nil {
+		return err
+	}
+	if len(listCmd.Args()) == 0 {
+		if full {
+			for name, cfg := range conf.Accounts {
+				fmt.Printf(fmtFull, name, cfg.String())
+			}
+			return nil
+		}
+		w := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
+		for name, cfg := range conf.Accounts {
+			fmt.Fprintf(w, fmtShort, name, cfg.URI)
+		}
+		w.Flush()
+		return nil
+	}
+
+	name := listCmd.Args()[0]
+	if cfg, ok := conf.Accounts[name]; ok {
+		if full {
+			fmt.Printf(fmtFull, name, cfg.String())
+		} else {
+			fmt.Printf(fmtShort, name, cfg.URI)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -53,6 +92,9 @@ func main() {
 	case "import":
 		err = config.ImportCfg(os.Args[2:])
 	case "init_cfg":
+		break
+	case "list":
+		err = list(os.Args[2:], conf)
 		break
 	case "-v":
 		fallthrough
