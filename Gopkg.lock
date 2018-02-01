@@ -14,12 +14,6 @@
   revision = "349dd0209470eabd9514242c688c403c0926d266"
 
 [[projects]]
-  name = "github.com/c-14/grue"
-  packages = ["config"]
-  revision = "3d789418aa328d2e7a636e7680bf4d2fb0887f25"
-  version = "v0.2.0-alpha"
-
-[[projects]]
   branch = "master"
   name = "github.com/jaytaylor/html2text"
   packages = ["."]
@@ -82,6 +76,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "21933fff775521e6f578fade087f57968671554426770ec95ae1f8ca928c74b2"
+  inputs-digest = "aeafcd69fdd235f86be71dd30146f8297961b684f3c3895cafae3bab62407a9b"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -19,10 +19,7 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
-
-[[constraint]]
-  name = "github.com/c-14/grue"
-  version = "0.2.0-alpha"
+ignored = ["github.com/c-14/grue/*"]
 
 [[constraint]]
   branch = "master"
