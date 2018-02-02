@@ -4,9 +4,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/c-14/grue/config"
 	"os"
 	"text/tabwriter"
+
+	"github.com/c-14/grue/config"
 )
 
 const version = "0.2.0-alpha"
@@ -17,7 +18,7 @@ func usage() string {
 Subcommands:
 	add <name> <url>
 	delete <name>
-	fetch [-init]
+	fetch [-init] [name]
 	import <config>
 	init_cfg
 	list [name] [--full]`
@@ -44,13 +45,16 @@ func del(args []string, conf *config.GrueConfig) error {
 }
 
 func fetch(args []string, conf *config.GrueConfig) error {
-	var fetchCmd = flag.NewFlagSet("fetch", flag.ContinueOnError)
-	var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
-	err := fetchCmd.Parse(os.Args[2:])
-	if err == nil {
-		err = fetchFeeds(conf, *initFlag)
+	var initFlag bool
+	fetchCmd := flag.NewFlagSet("fetch", flag.ContinueOnError)
+	fetchCmd.BoolVar(&initFlag, "init", false, "Don't send emails, only initialize database of read entries")
+	if err := fetchCmd.Parse(os.Args[2:]); err != nil {
+		return err
 	}
-	return err
+	if len(fetchCmd.Args()) == 0 {
+		return fetchFeeds(conf, initFlag)
+	}
+	return fetchName(conf, fetchCmd.Arg(0), initFlag)
 }
 
 func list(args []string, conf *config.GrueConfig) error {
