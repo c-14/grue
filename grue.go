@@ -43,6 +43,16 @@ func del(args []string, conf *config.GrueConfig) error {
 	return DeleteHistory(name)
 }
 
+func fetch(args []string, conf *config.GrueConfig) error {
+	var fetchCmd = flag.NewFlagSet("fetch", flag.ContinueOnError)
+	var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
+	err := fetchCmd.Parse(os.Args[2:])
+	if err == nil {
+		err = fetchFeeds(conf, *initFlag)
+	}
+	return err
+}
+
 func list(args []string, conf *config.GrueConfig) error {
 	const (
 		fmtShort = "%s\t%s\n"
@@ -97,12 +107,7 @@ func main() {
 	case "delete":
 		err = del(os.Args[2:], conf)
 	case "fetch":
-		var fetchCmd = flag.NewFlagSet("fetch", flag.ContinueOnError)
-		var initFlag = fetchCmd.Bool("init", false, "Don't send emails, only initialize database of read entries")
-		err = fetchCmd.Parse(os.Args[2:])
-		if err == nil {
-			err = fetchFeeds(conf, *initFlag)
-		}
+		err = fetch(os.Args[2:], conf)
 	case "import":
 		err = config.ImportCfg(os.Args[2:])
 	case "init_cfg":
