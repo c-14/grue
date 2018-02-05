@@ -87,3 +87,16 @@ func DeleteHistory(name string) error {
 	delete(hist.Feeds, name)
 	return hist.Write()
 }
+
+func RenameHistory(old, new string) error {
+	hist, err := ReadHistory()
+	if err != nil {
+		return err
+	}
+	if _, ok := hist.Feeds[old]; !ok {
+		return nil
+	}
+	hist.Feeds[new] = hist.Feeds[old]
+	delete(hist.Feeds, old)
+	return hist.Write()
+}

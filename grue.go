@@ -13,7 +13,7 @@ import (
 const version = "0.2.0-alpha"
 
 func usage() string {
-	return `usage: grue [--help] {add|delete|fetch|import|init_cfg|list} ...
+	return `usage: grue [--help] {add|delete|fetch|import|init_cfg|list|rename} ...
 
 Subcommands:
 	add <name> <url>
@@ -21,7 +21,8 @@ Subcommands:
 	fetch [-init] [name]
 	import <config>
 	init_cfg
-	list [name] [--full]`
+	list [name] [--full]
+	rename <old> <new>`
 }
 
 func add(args []string, conf *config.GrueConfig) error {
@@ -97,6 +98,18 @@ func list(args []string, conf *config.GrueConfig) error {
 	return nil
 }
 
+func rename(args []string, conf *config.GrueConfig) error {
+	if len(args) != 2 {
+		return errors.New("usage: grue rename <old> <new>")
+	}
+	old := args[0]
+	new := args[1]
+	if err := conf.RenameAccount(old, new); err != nil {
+		return err
+	}
+	return RenameHistory(old, new)
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, usage())
@@ -122,6 +135,8 @@ func main() {
 	case "list":
 		err = list(os.Args[2:], conf)
 		break
+	case "rename":
+		err = rename(os.Args[2:], conf)
 	case "-v":
 		fallthrough
 	case "--version":
