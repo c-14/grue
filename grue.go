@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/c-14/grue/config"
@@ -69,15 +70,20 @@ func list(args []string, conf *config.GrueConfig) error {
 		return err
 	}
 	if len(listCmd.Args()) == 0 {
+		var keys []string
+		for k, _ := range conf.Accounts {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 		if full {
-			for name, cfg := range conf.Accounts {
-				fmt.Printf(fmtFull, name, cfg.String())
+			for _, k := range keys {
+				fmt.Printf(fmtFull, k, conf.Accounts[k])
 			}
 			return nil
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
-		for name, cfg := range conf.Accounts {
-			fmt.Fprintf(w, fmtShort, name, cfg.URI)
+		for _, k := range keys {
+			fmt.Fprintf(w, fmtShort, k, conf.Accounts[k].URI)
 		}
 		w.Flush()
 		return nil
@@ -86,7 +92,7 @@ func list(args []string, conf *config.GrueConfig) error {
 	name := listCmd.Args()[0]
 	if cfg, ok := conf.Accounts[name]; ok {
 		if full {
-			fmt.Printf(fmtFull, name, cfg.String())
+			fmt.Printf(fmtFull, name, cfg)
 		} else {
 			fmt.Printf(fmtShort, name, cfg.URI)
 		}
