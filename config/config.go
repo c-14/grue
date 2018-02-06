@@ -22,7 +22,7 @@ func (cfg AccountConfig) String() string {
 	w := tabwriter.NewWriter(&b, 0, 8, 0, '\t', 0)
 	fmt.Fprintf(w, "URI\t\"%s\"\n", cfg.URI)
 	if cfg.NameFormat != nil {
-		fmt.Fprintf(w, "Name format\t\"%s\"\n", *cfg.NameFormat)
+		fmt.Fprintf(w, "Name Format\t\"%s\"\n", *cfg.NameFormat)
 	}
 	if cfg.UserAgent != nil {
 		fmt.Fprintf(w, "User Agent\t\"%s\"\n", *cfg.UserAgent)
