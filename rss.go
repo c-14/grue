@@ -146,3 +146,33 @@ func fetchFeeds(conf *config.GrueConfig, init bool) error {
 	}
 	return hist.Write()
 }
+
+func fetchName(conf *config.GrueConfig, name string, init bool) error {
+	accountConfig, ok := conf.Accounts[name]
+	if !ok {
+		return fmt.Errorf("%s: account does not exist", name)
+	}
+	hist, err := ReadHistory()
+	if err != nil {
+		return err
+	}
+	fp := FeedParser{
+		parser:   gofeed.NewParser(),
+		init:     init,
+		sem:      make(chan int, 1),
+		finished: make(chan int),
+	}
+	fp.sem <- 1
+	account, exist := hist.Feeds[name]
+	if !exist {
+		account = new(RSSFeed)
+		hist.Feeds[name] = account
+	}
+	if len(account.GUIDList) == 0 {
+		account.GUIDList = make(map[string]struct{})
+	}
+	account.config = accountConfig
+	go fetchFeed(fp, name, account, conf)
+	<-fp.finished
+	return hist.Write()
+}
