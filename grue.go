@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"text/tabwriter"
 
 	"github.com/c-14/grue/config"
 )
@@ -81,11 +80,9 @@ func list(args []string, conf *config.GrueConfig) error {
 			}
 			return nil
 		}
-		w := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
 		for _, k := range keys {
-			fmt.Fprintf(w, fmtShort, k, conf.Accounts[k].URI)
+			fmt.Printf(fmtShort, k, conf.Accounts[k].URI)
 		}
-		w.Flush()
 		return nil
 	}
 

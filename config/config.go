@@ -19,7 +19,7 @@ type AccountConfig struct {
 
 func (cfg AccountConfig) String() string {
 	var b bytes.Buffer
-	w := tabwriter.NewWriter(&b, 0, 8, 0, '\t', 0)
+	w := tabwriter.NewWriter(&b, 11, 8, 0, '\t', 0)
 	fmt.Fprintf(w, "URI\t\"%s\"\n", cfg.URI)
 	if cfg.NameFormat != nil {
 		fmt.Fprintf(w, "Name Format\t\"%s\"\n", *cfg.NameFormat)
