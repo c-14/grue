@@ -172,3 +172,18 @@ func (conf *GrueConfig) DeleteAccount(name string) error {
 	delete(conf.Accounts, name)
 	return conf.save()
 }
+
+func (conf *GrueConfig) RenameAccount(old, new string) error {
+	if conf.Accounts == nil {
+		return fmt.Errorf("%s: account does not exist", old)
+	}
+	if _, ok := conf.Accounts[old]; !ok {
+		return fmt.Errorf("%s: account does not exist", old)
+	}
+	if _, ok := conf.Accounts[new]; ok {
+		return fmt.Errorf("%s: account already exists", new)
+	}
+	conf.Accounts[new] = conf.Accounts[old]
+	delete(conf.Accounts, old)
+	return conf.save()
+}
