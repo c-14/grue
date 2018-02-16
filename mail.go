@@ -19,6 +19,7 @@ type Email struct {
 	Date        time.Time
 	Subject     string
 	UserAgent   string
+	FeedURL     string
 	ItemURI     string
 	Body        string
 }
@@ -57,6 +58,7 @@ func (email *Email) format() *gomail.Message {
 	if email.UserAgent != "" {
 		m.SetHeader("User-Agent", email.UserAgent)
 	}
+	m.SetHeader("X-RSS-Feed", email.FeedURL)
 	m.SetHeader("X-RSS-URI", email.ItemURI)
 	bodyPlain, err := html2text.FromString(email.Body)
 	if err != nil {
@@ -75,6 +77,7 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	email.Subject = item.Title
 	email.Date = date
 	email.setUserAgent(conf)
+	email.FeedURL = account.URI
 	email.ItemURI = item.Link
 	if item.Description == "" {
 		email.Body = item.Content
