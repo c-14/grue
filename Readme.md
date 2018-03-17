@@ -6,7 +6,7 @@ A simple RSS client that parses feeds and then sends them as emails via SMTP.
 
 Current Status:
 
-	Release - 0.2.0-alpha
+	Release - 0.1.0
 	Bugs - Probably
 
 ## Download
@@ -23,6 +23,16 @@ grue import rss2email.cfg
 * Add new Feed to Config:
 ```
 grue add <name> <url>
+```
+
+* Remove a Feed from Config:
+```
+grue delete <name>
+```
+
+* List Feeds in Config:
+```
+grue list
 ```
 
 * Fetch Feeds as cron job:
