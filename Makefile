@@ -1,5 +1,8 @@
 .PHONY: all build test
 
+GO111MODULES=on
+export GO111MODULES
+
 all: build vet fmt
 
 build: grue.go
