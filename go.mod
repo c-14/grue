@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/PuerkitoBio/goquery v0.0.0-20180128195650-09540e565986 // indirect
 	github.com/andybalholm/cascadia v0.0.0-20161224141413-349dd0209470 // indirect
-	github.com/jaytaylor/html2text v0.0.0-20180130233801-e76a2f8aa970
+	github.com/jaytaylor/html2text v0.0.0-20190408195923-01ec452cbe43
 	github.com/mattn/go-runewidth v0.0.0-20170201022620-9e777a8366cc // indirect
 	github.com/mmcdole/gofeed v1.0.0-beta
 	github.com/mmcdole/goxpp v0.0.0-20170720115402-77e4a51a73ed // indirect
