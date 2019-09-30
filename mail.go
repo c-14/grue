@@ -79,7 +79,7 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	email.setUserAgent(conf)
 	email.FeedURL = account.URI
 	email.ItemURI = item.Link
-	if item.Description == "" {
+	if item.Content != "" {
 		email.Body = item.Content
 	} else {
 		email.Body = item.Description
