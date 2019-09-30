@@ -15,5 +15,5 @@ require (
 	golang.org/x/net v0.0.0-20180124060956-0ed95abb35c4 // indirect
 	golang.org/x/text v0.0.0-20171227012246-e19ae1496984 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
-	gopkg.in/gomail.v2 v2.0.0-20150902115704-41f357289737
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )
