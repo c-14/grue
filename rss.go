@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-type FeedParser struct {
-	parser   *gofeed.Parser
+type FeedFetcher struct {
 	init     bool
 	sem      chan int
 	finished chan int
@@ -61,7 +60,7 @@ func hasNewerDate(item *gofeed.Item, lastFetched int64) (time.Time, DateType) {
 	return time.Now(), NoDate
 }
 
-func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.GrueConfig) {
+func fetchFeed(fp FeedFetcher, feedName string, account *RSSFeed, config *config.GrueConfig) {
 	// if account.UserAgent != nil {
 	// 	feed.SetUserAgent(*account.UserAgent)
 	// }
@@ -71,7 +70,8 @@ func fetchFeed(fp FeedParser, feedName string, account *RSSFeed, config *config.
 		fp.finished <- 1
 		return
 	}
-	feed, err := fp.parser.ParseURL(account.config.URI)
+	parser := gofeed.NewParser()
+	feed, err := parser.ParseURL(account.config.URI)
 	account.LastQueried = now.Unix()
 	if err != nil {
 		if account.Tries > 0 {
@@ -125,7 +125,7 @@ func fetchFeeds(conf *config.GrueConfig, init bool) error {
 	if init {
 	}
 
-	fp := FeedParser{parser: gofeed.NewParser(), init: init, sem: make(chan int, 10), finished: make(chan int)}
+	fp := FeedFetcher{init: init, sem: make(chan int, 10), finished: make(chan int)}
 	go func() {
 		for name, accountConfig := range conf.Accounts {
 			fp.sem <- 1
@@ -156,8 +156,7 @@ func fetchName(conf *config.GrueConfig, name string, init bool) error {
 	if err != nil {
 		return err
 	}
-	fp := FeedParser{
-		parser:   gofeed.NewParser(),
+	fp := FeedFetcher{
 		init:     init,
 		sem:      make(chan int, 1),
 		finished: make(chan int),
