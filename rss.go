@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/c-14/grue/config"
-	"github.com/mmcdole/gofeed"
 	"math"
 	"os"
 	"time"
+
+	"github.com/c-14/grue/config"
+	"github.com/mmcdole/gofeed"
 )
 
 type FeedFetcher struct {

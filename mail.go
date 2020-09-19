@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/c-14/grue/config"
-	"github.com/jaytaylor/html2text"
-	"github.com/mmcdole/gofeed"
-	"gopkg.in/gomail.v2"
 	"io"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/c-14/grue/config"
+	"github.com/jaytaylor/html2text"
+	"github.com/mmcdole/gofeed"
+	"gopkg.in/gomail.v2"
 )
 
 type Email struct {
