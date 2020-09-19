@@ -32,16 +32,17 @@ func (cfg AccountConfig) String() string {
 }
 
 type GrueConfig struct {
-	path        string
-	Recipient   string
-	FromAddress string
-	NameFormat  string
-	UserAgent   string
-	SmtpUser    *string
-	SmtpPass    *string
-	SmtpServer  *string
-	LogLevel    *string
-	Accounts    map[string]AccountConfig
+	path         string
+	Recipient    string
+	FromAddress  string
+	NameFormat   string
+	ListIdFormat string
+	UserAgent    string
+	SmtpUser     *string
+	SmtpPass     *string
+	SmtpServer   *string
+	LogLevel     *string
+	Accounts     map[string]AccountConfig
 }
 
 func (conf *GrueConfig) Lock() error {

@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"hash/fnv"
 	"io"
+	"net/url"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ type Email struct {
 	Date        time.Time
 	Subject     string
 	UserAgent   string
+	ListId      string
 	FeedURL     string
 	ItemURI     string
 	Body        string
@@ -42,6 +45,28 @@ func (email *Email) setUserAgent(conf *config.GrueConfig) {
 	}
 }
 
+// hash is a utility function to create a string representation of the
+// hash of the input string.
+func hash(s string) string {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return fmt.Sprintf("%d", h.Sum32())
+}
+
+// See RFC2919 for details on List-Id header
+func (email *Email) setListId(feedName, feedURI string, conf *config.GrueConfig) {
+	if conf.ListIdFormat == "" {
+		return
+	}
+	var host string
+	if u, err := url.Parse(email.FeedURL); err == nil {
+		host = u.Hostname()
+	}
+	r := strings.NewReplacer("{name}", feedName, "{urihash}", hash(feedURI),
+		"{namehash}", hash(feedName), "{host}", host)
+	email.ListId = r.Replace(conf.ListIdFormat)
+}
+
 func (email *Email) Send() error {
 	m := email.format()
 	return gomail.Send(gomail.SendFunc(sendMail), m)
@@ -58,6 +83,9 @@ func (email *Email) format() *gomail.Message {
 	m.SetDateHeader("X-Date", time.Now())
 	if email.UserAgent != "" {
 		m.SetHeader("User-Agent", email.UserAgent)
+	}
+	if email.ListId != "" {
+		m.SetHeader("List-Id", email.ListId)
 	}
 	m.SetHeader("X-RSS-Feed", email.FeedURL)
 	m.SetHeader("X-RSS-URI", email.ItemURI)
@@ -85,6 +113,7 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	} else {
 		email.Body = item.Description
 	}
+	email.setListId(feedName, account.URI, conf)
 	return email
 }
 
