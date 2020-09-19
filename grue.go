@@ -71,7 +71,7 @@ func list(args []string, conf *config.GrueConfig) error {
 	}
 	if len(listCmd.Args()) == 0 {
 		var keys []string
-		for k, _ := range conf.Accounts {
+		for k := range conf.Accounts {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
