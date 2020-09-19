@@ -28,14 +28,28 @@ type Email struct {
 	Body        string
 }
 
-func (email *Email) setFrom(feedName string, feedTitle string, account config.AccountConfig, conf *config.GrueConfig) {
-	r := strings.NewReplacer("{name}", feedName, "{title}", feedTitle)
+func (email *Email) setFrom(feedName string, feed *gofeed.Feed, item *gofeed.Item, account config.AccountConfig, conf *config.GrueConfig) {
+	var author gofeed.Person
+	if item.Author != nil {
+		author = *item.Author
+	} else if feed.Author != nil {
+		author = *feed.Author
+	}
+	if author.Name == "" {
+		author.Name = feedName
+	}
+	r := strings.NewReplacer("{name}", feedName, "{title}", feed.Title,
+		"{author}", author.Name)
 	if account.NameFormat != nil {
 		email.FromName = r.Replace(*account.NameFormat)
 	} else {
 		email.FromName = r.Replace(conf.NameFormat)
 	}
-	email.FromAddress = conf.FromAddress
+	if author.Email == "" {
+		email.FromAddress = conf.FromAddress
+	} else {
+		email.FromAddress = author.Email
+	}
 }
 
 func (email *Email) setUserAgent(conf *config.GrueConfig) {
@@ -99,9 +113,9 @@ func (email *Email) format() *gomail.Message {
 	return m
 }
 
-func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time.Time, account config.AccountConfig, conf *config.GrueConfig) *Email {
+func createEmail(feedName string, feed *gofeed.Feed, item *gofeed.Item, date time.Time, account config.AccountConfig, conf *config.GrueConfig) *Email {
 	email := new(Email)
-	email.setFrom(feedName, feedTitle, account, conf)
+	email.setFrom(feedName, feed, item, account, conf)
 	email.Recipient = conf.Recipient
 	email.Subject = item.Title
 	email.Date = date

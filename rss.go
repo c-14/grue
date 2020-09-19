@@ -99,7 +99,7 @@ func fetchFeed(fp FeedFetcher, feedName string, account *RSSFeed, config *config
 			_, exists := guids[item.GUID]
 			date, newer := hasNewerDate(item, account.LastFetched)
 			if !exists || (item.GUID == "" && newer == DateNewer) {
-				e := createEmail(feedName, feed.Title, item, date, account.config, config)
+				e := createEmail(feedName, feed, item, date, account.config, config)
 				err = e.Send()
 			}
 			if err == nil {
