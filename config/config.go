@@ -49,7 +49,7 @@ func (conf *GrueConfig) Lock() error {
 	switch {
 	case err == nil:
 		defer lock.Close()
-		_, err = lock.WriteString(string(os.Getpid()))
+		_, err = lock.WriteString(fmt.Sprint(os.Getpid()))
 		return err
 	case os.IsExist(err):
 		return fmt.Errorf("Aborting due to existing lock on %s\n", conf.path)
