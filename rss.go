@@ -8,9 +8,11 @@ import (
 
 	"github.com/c-14/grue/config"
 	"github.com/mmcdole/gofeed"
+	"gopkg.in/gomail.v2"
 )
 
 type FeedFetcher struct {
+	mailer   gomail.Sender
 	init     bool
 	sem      chan int
 	finished chan int
@@ -100,7 +102,7 @@ func fetchFeed(fp FeedFetcher, feedName string, account *RSSFeed, config *config
 			date, newer := hasNewerDate(item, account.LastFetched)
 			if !exists || (item.GUID == "" && newer == DateNewer) {
 				e := createEmail(feedName, feed, item, date, account.config, config)
-				err = e.Send()
+				err = e.Send(fp.mailer)
 			}
 			if err == nil {
 				account.GUIDList[item.GUID] = struct{}{}
@@ -123,10 +125,15 @@ func fetchFeeds(conf *config.GrueConfig, init bool) error {
 	if err != nil {
 		return err
 	}
-	if init {
+	var mailer gomail.Sender
+	if !init {
+		mailer, err = setupMailer(conf)
+		if err != nil {
+			return err
+		}
 	}
 
-	fp := FeedFetcher{init: init, sem: make(chan int, 10), finished: make(chan int)}
+	fp := FeedFetcher{init: init, mailer: mailer, sem: make(chan int, 10), finished: make(chan int)}
 	go func() {
 		for name, accountConfig := range conf.Accounts {
 			fp.sem <- 1
