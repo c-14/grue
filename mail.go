@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os/exec"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/c-14/grue/config"
 	"github.com/jaytaylor/html2text"
 	"github.com/mmcdole/gofeed"
 	"gopkg.in/gomail.v2"
-	"io"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 type Email struct {
@@ -41,9 +43,9 @@ func (email *Email) setUserAgent(conf *config.GrueConfig) {
 	}
 }
 
-func (email *Email) Send() error {
+func (email *Email) Send(sender gomail.Sender) error {
 	m := email.format()
-	return gomail.Send(gomail.SendFunc(sendMail), m)
+	return gomail.Send(sender, m)
 }
 
 func (email *Email) format() *gomail.Message {
@@ -87,7 +89,9 @@ func createEmail(feedName string, feedTitle string, item *gofeed.Item, date time
 	return email
 }
 
-func sendMail(from string, to []string, msg io.WriterTo) error {
+type SendmailSender struct{}
+
+func (sender SendmailSender) Send(from string, to []string, msg io.WriterTo) error {
 	cmd := exec.Command("sendmail", "-oi", "-t")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -104,4 +108,54 @@ func sendMail(from string, to []string, msg io.WriterTo) error {
 	}
 	stdin.Close()
 	return cmd.Wait()
+}
+
+type SmtpSender struct {
+	dialer *gomail.Dialer
+}
+
+func setupDialer(server string, user, pass *string) (gomail.Sender, error) {
+	var sender SmtpSender
+	var hostname string
+	var port int
+	var err error
+
+	parts := strings.Split(server, ":")
+	if len(parts) > 2 {
+		return nil, fmt.Errorf("%s not a valid hostname\n", server)
+	} else if len(parts) == 1 {
+		hostname = parts[0]
+		port = 587
+	} else {
+		hostname = parts[0]
+		port, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse port: %v\n", err)
+		}
+	}
+
+	if user != nil {
+		sender.dialer = gomail.NewDialer(hostname, port, *user, *pass)
+	} else {
+		sender.dialer = gomail.NewDialer(hostname, port, "", "")
+	}
+
+	return sender, nil
+}
+
+func (sender SmtpSender) Send(from string, to []string, msg io.WriterTo) error {
+	s, err := sender.dialer.Dial()
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	return s.Send(from, to, msg)
+}
+
+func setupMailer(conf *config.GrueConfig) (gomail.Sender, error) {
+	if conf.SmtpServer != nil {
+		return setupDialer(*conf.SmtpServer, conf.SmtpUser, conf.SmtpPass)
+	}
+	return SendmailSender{}, nil
 }
