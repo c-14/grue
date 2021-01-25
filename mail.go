@@ -17,6 +17,7 @@ import (
 
 type Email struct {
 	FromName    string
+	SenderName  string
 	FromAddress string
 	Recipient   string
 	Date        time.Time
@@ -49,6 +50,7 @@ func (email *Email) setFrom(feedName string, feed *gofeed.Feed, item *gofeed.Ite
 		email.FromAddress = conf.FromAddress
 	} else {
 		email.FromAddress = author.Email
+		email.SenderName = conf.FromAddress
 	}
 }
 
@@ -91,6 +93,10 @@ func (email *Email) format() *gomail.Message {
 
 	m := gomail.NewMessage()
 	m.SetAddressHeader("From", email.FromAddress, email.FromName)
+	if email.SenderName != "" {
+		// if UserAgent is "", name portion of address is omitted
+		m.SetAddressHeader("Sender", email.FromAddress, email.UserAgent)
+	}
 	m.SetHeader("To", email.Recipient)
 	m.SetHeader("Subject", email.Subject)
 	m.SetDateHeader("Date", email.Date)
