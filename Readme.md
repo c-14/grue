@@ -6,7 +6,7 @@ A simple RSS client that parses feeds and then sends them as emails via SMTP.
 
 Current Status:
 
-	Release - 0.2.2
+	Release - 0.3.0
 	Bugs - Probably
 
 ## Download
