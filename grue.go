@@ -10,7 +10,7 @@ import (
 	"github.com/c-14/grue/config"
 )
 
-const version = "0.3.0"
+const version = "0.3.1-next"
 
 func usage() string {
 	return `usage: grue [--help] {add|delete|fetch|import|init_cfg|list|rename} ...
